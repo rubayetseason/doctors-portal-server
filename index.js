@@ -22,10 +22,10 @@ async function run() {
     const bookingsCollection = client
       .db("doctorsPortal")
       .collection("bookings");
+    const usersCollection = client.db("doctorsPortal").collection("users");
 
     app.get("/appointmentOptions", async (req, res) => {
       const date = req.query.date;
-      console.log(date);
       const query = {};
       const options = await appointmentOptionCollection.find(query).toArray();
       const bookingQuery = { appointmentDate: date }; //created a search query named bookingQuery, with the help of which we are going to search in the bookings database, to find out the bookings created on a particular date (for say in 5 august, 29september, 4 dec)
@@ -73,12 +73,19 @@ async function run() {
       });
       res.send(options);
 
+      app.get("/bookings", async (req, res) => {
+        const email = req.query.email;
+        const query = { email: email };
+        const bookings = await bookingsCollection.find(query).toArray();
+        res.send(bookings);
+      });
+
       app.post("/bookings", async (req, res) => {
         const booking = req.body;
         const query = {
           appointmentDate: booking.appointmentDate,
           email: booking.email,
-          treatment: booking.treatment
+          treatment: booking.treatment,
         };
 
         const alreadyBooked = await bookingsCollection.find(query).toArray();
@@ -88,6 +95,12 @@ async function run() {
         }
 
         const result = await bookingsCollection.insertOne(booking);
+        res.send(result);
+      });
+
+      app.post("/users", async (req, res) => {
+        const user = req.body;
+        const result = await usersCollection.insertOne(user);
         res.send(result);
       });
     });
