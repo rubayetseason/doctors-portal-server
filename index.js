@@ -35,12 +35,12 @@ async function run() {
       //then we executed the query in the bookingCollection to get the bookings (name, time) reserved in that particular date
 
       //now we forEach the array of objects of the available slots database and take only those options which's name matches which the name we found by filtering out the bookings database
-     
+
       options.forEach((option) => {
         const optionBooked = alreadyBooked.filter(
           (book) => book.treatment === option.name
         );
-         //if the names match, then we proceed forward
+        //if the names match, then we proceed forward
         //then we only get the reserved + name matching booked slots for that particular date, for example,
         // [
         //   {
@@ -63,7 +63,7 @@ async function run() {
 
         const bookedSlots = optionBooked.map((book) => book.slot);
         //now we map each particular date reserved bookings (optionBooked), and take their time slots only
-        
+
         const remainingSlots = option.slots.filter(
           (slot) => !bookedSlots.includes(slot)
         );
@@ -75,6 +75,18 @@ async function run() {
 
       app.post("/bookings", async (req, res) => {
         const booking = req.body;
+        const query = {
+          appointmentDate: booking.appointmentDate,
+          email: booking.email,
+          treatment: booking.treatment
+        };
+
+        const alreadyBooked = await bookingsCollection.find(query).toArray();
+        if (alreadyBooked.length) {
+          const message = `You already have a booking on ${booking.appointmentDate}`;
+          return res.send({ acknowledged: false, message });
+        }
+
         const result = await bookingsCollection.insertOne(booking);
         res.send(result);
       });
