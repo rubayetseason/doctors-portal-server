@@ -8,7 +8,8 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-const uri = "mongodb+srv://docPortal:E37VzqaIAzVhn7Pj@cluster0.tsmlaiu.mongodb.net/test";
+const uri =
+  "mongodb+srv://docPortal:E37VzqaIAzVhn7Pj@cluster0.tsmlaiu.mongodb.net/test";
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.tsmlaiu.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
@@ -16,22 +17,20 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
-
-function verifyJWT (req,res, next){
+function verifyJWT(req, res, next) {
   const authHeader = req.headers.authorization;
-  if(!authHeader){
-return res.status(401).send('Unauthorized Access');
+  if (!authHeader) {
+    return res.status(401).send("Unauthorized Access");
   }
-  const token = authHeader.split(' ')[1];
-  jwt.verify(token, process.env.ACCESS_TOKEN, function(err, decoded){
-    if(err){
-      return res.status(403).send({message: 'Forbidden Access'})
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden Access" });
     }
     req.decoded = decoded;
     next();
-  })
+  });
 }
-
 
 async function run() {
   try {
@@ -42,7 +41,6 @@ async function run() {
       .db("doctorsPortal")
       .collection("bookings");
     const usersCollection = client.db("doctorsPortal").collection("users");
-
 
     //apointment part here
     app.get("/appointmentOptions", async (req, res) => {
@@ -93,55 +91,59 @@ async function run() {
         //now we change the option.slots as the remaining slots
       });
       res.send(options);
+    });
+    app.get("/bookings", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+      const query = { email: email };
+      const bookings = await bookingsCollection.find(query).toArray();
+      res.send(bookings);
+    });
 
-      //bookings part here
-      app.get("/bookings", verifyJWT, async (req, res) => {
-        const email = req.query.email;
-     const decodedEmail = req.decoded.email;
-     if(email !== decodedEmail){
-      return res.status(403).send({message: 'Forbidden Access'});
-     }
-        const query = { email: email };
-        const bookings = await bookingsCollection.find(query).toArray();
-        res.send(bookings);
-      });
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const query = {
+        appointmentDate: booking.appointmentDate,
+        email: booking.email,
+        treatment: booking.treatment,
+      };
 
-      app.post("/bookings", async (req, res) => {
-        const booking = req.body;
-        const query = {
-          appointmentDate: booking.appointmentDate,
-          email: booking.email,
-          treatment: booking.treatment,
-        };
+      const alreadyBooked = await bookingsCollection.find(query).toArray();
+      if (alreadyBooked.length) {
+        const message = `You already have a booking on ${booking.appointmentDate}`;
+        return res.send({ acknowledged: false, message });
+      }
 
-        const alreadyBooked = await bookingsCollection.find(query).toArray();
-        if (alreadyBooked.length) {
-          const message = `You already have a booking on ${booking.appointmentDate}`;
-          return res.send({ acknowledged: false, message });
-        }
+      const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
 
-        const result = await bookingsCollection.insertOne(booking);
-        res.send(result);
-      });
+    app.get("/jwt", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user) {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
+          expiresIn: "1h",
+        });
+        return res.send({ accessToken: token });
+      }
+      res.status(403).send({ accessToken: "" });
+    });
 
-      app.get("/jwt", async (req, res) => {
-        const email = req.query.email;
-        const query = { email: email };
-        const user = await usersCollection.findOne(query);
-        if (user) {
-          const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
-            expiresIn: "1h",
-          });
-          return res.send({ accessToken: token });
-        }
-        res.status(403).send({ accessToken: "" });
-      });
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
-      app.post("/users", async (req, res) => {
-        const user = req.body;
-        const result = await usersCollection.insertOne(user);
-        res.send(result);
-      });
+    app.get("/users", async (req, res) => {
+      const query = {};
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
     });
   } finally {
   }
