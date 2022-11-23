@@ -9,9 +9,8 @@ app.use(cors());
 app.use(express.json());
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
-const uri =
-  "mongodb+srv://docPortal:E37VzqaIAzVhn7Pj@cluster0.tsmlaiu.mongodb.net/test";
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.tsmlaiu.mongodb.net/?retryWrites=true&w=majority`;
+// const uri ="mongodb+srv://docPortal:E37VzqaIAzVhn7Pj@cluster0.tsmlaiu.mongodb.net/test";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.tsmlaiu.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
